@@ -1,15 +1,14 @@
 # Buddy — AI-Powered Desktop Voice Assistant
 
-A desktop AI assistant you can talk to. Buddy listens to your voice, streams back intelligent responses, and speaks them aloud — running locally on your Windows machine using free cloud APIs. It is being developed to eventually assist with coding, understand what is on your screen, and help with tasks visible on your laptop.
+A voice-first AI desktop assistant built with Tauri, React, TypeScript, and Python. Buddy listens to your voice, streams AI-generated responses, and speaks them aloud using text-to-speech.
 
+Currently runs on Windows and uses free cloud APIs for AI processing, with plans to expand into coding assistance, screen awareness, and task automation.
 
-> **Status:** Phase 1 complete — active development
-
----
+**Status:** Phase 1 complete — active development
 
 ## Table of Contents
 
-- [What Buddy Does](#what-buddy-does)
+- [Features](#features)
 - [Architecture](#architecture)
 - [Tech Stack](#tech-stack)
 - [Getting Started](#getting-started)
@@ -19,253 +18,274 @@ A desktop AI assistant you can talk to. Buddy listens to your voice, streams bac
   - [Environment Variables](#environment-variables)
 - [API Endpoints](#api-endpoints)
 - [Project Structure](#project-structure)
-- [Features in Detail](#features-in-detail)
+- [Implementation Details](#implementation-details)
 - [Known Limitations](#known-limitations)
 - [Roadmap](#roadmap)
 - [Why I Built This](#why-i-built-this)
+- [Author](#author)
 - [License](#license)
 
----
+## Features
 
-## What Buddy Does
-
-Buddy is a voice-first AI assistant built as a desktop application. It combines a modern React frontend with a Python backend to deliver real-time voice conversations powered by large language models.
-
-**Current capabilities:**
-
-- **Voice input** — Click to talk, or use the wake word "Buddy"
-- **Streamed AI responses** — Powered by Groq LLMs, delivered token-by-token
-- **Voice output** — Text-to-speech with 40+ selectable voices
-- **Interruption handling** — Say "wait", "stop", or simply start talking to interrupt Buddy mid-sentence
-- **Chat history** — Full scrollable conversation log with clear user/assistant labels
-- **Voice visualizer** — Reactive circular waveform that responds to your microphone
-- **Caching layers** — TTS audio and common LLM replies are cached for instant playback
-- **Graceful fallbacks** — Automatic switching between TTS engines and LLM models when rate limits or errors occur
-
----
+- **Voice Input:** Activate Buddy using the wake word "Buddy" or click to talk.
+- **Streaming AI Responses:** Receive real-time responses powered by Groq-hosted language models.
+- **Text-to-Speech:** Listen to responses using 40+ selectable voices.
+- **Interruption Handling:** Interrupt speech playback by talking or using commands such as "stop" and "wait".
+- **Chat History:** View conversations in a scrollable chat interface.
+- **Voice Visualizer:** A reactive waveform that responds to microphone input.
+- **Response Caching:** Cache TTS audio and common LLM responses to reduce latency and API usage.
+- **Automatic Fallbacks:** Switch between supported TTS engines and LLM models when errors or rate limits occur.
 
 ## Architecture
-┌──────────────────────────────────────────────────────┐
-│ Tauri Desktop Window (Windows) │
-│ │
-│ ┌──────────────────┐ ┌────────────────────────┐ │
-│ │ Voice Panel │ │ Chat Panel │ │
-│ │ • Wave visual │ │ • Message history │ │
-│ │ • Voice picker │ │ • Text input │ │
-│ │ • Status chip │ │ • Streaming output │ │
-│ └──────────────────┘ └────────────────────────┘ │
-│ │
-│ React + TypeScript + Material UI │
-└──────────────────────────────────────────────────────┘
-│
-│ HTTP (localhost:8000)
-▼
-┌──────────────────────────────────────────────────────┐
-│ Python Backend (FastAPI) │
-│ │
-│ POST /transcribe → Groq Whisper (speech-to-text) │
-│ POST /chat → Groq LLM (streamed responses) │
-│ POST /speak → Edge TTS → gTTS (fallback) │
-│ GET /health → Service status │
-└──────────────────────────────────────────────────────┘
 
-text
+```text
+┌─────────────────────────────────────┐
+│          Tauri Desktop App          │
+│                                     │
+│  React + TypeScript + Material UI   │
+│                                     │
+│  ┌──────────────┐ ┌──────────────┐  │
+│  │ Voice Panel  │ │  Chat Panel  │  │
+│  │ Waveform     │ │ Message Log  │  │
+│  │ Voice Picker │ │ Text Input   │  │
+│  └──────────────┘ └──────────────┘  │
+└──────────────────┬──────────────────┘
+                   │
+              HTTP / localhost:8000
+                   │
+                   ▼
+┌─────────────────────────────────────┐
+│          Python Backend             │
+│          FastAPI + Uvicorn          │
+│                                     │
+│  /transcribe  → Speech-to-Text      │
+│  /chat        → Streaming LLM       │
+│  /speak       → Text-to-Speech      │
+│  /health      → Health Check        │
+└─────────────────────────────────────┘
+```
 
-Buddy follows a **frontend/backend split**: the Tauri app handles UI and audio capture, while the Python service handles transcription, language model inference, and speech synthesis. Communication happens over HTTP on `localhost`.
-
----
+The frontend handles the desktop interface and audio capture. The Python backend manages speech transcription, LLM requests, and speech synthesis.
 
 ## Tech Stack
 
-| Layer | Technology |
-|-------|------------|
-| **Desktop shell** | Tauri |
-| **Frontend** | React 18, TypeScript, Material UI |
-| **Backend** | Python 3.11+, FastAPI, Uvicorn |
-| **Speech-to-text** | Groq Whisper large-v3 |
-| **Language model** | Groq GPT-OSS 120B / Llama 4 Scout |
-| **Text-to-speech** | Microsoft Edge TTS (primary), gTTS (fallback) |
-| **Caching** | Disk-based (TTS), in-memory (LLM) |
-
----
+| Component | Technology |
+|---|---|
+| Desktop Framework | Tauri |
+| Frontend | React, TypeScript, Material UI |
+| Backend | Python, FastAPI, Uvicorn |
+| Speech-to-Text | Groq Whisper large-v3 |
+| Language Models | Groq-hosted GPT-OSS 120B / Llama 4 Scout |
+| Text-to-Speech | Microsoft Edge TTS, gTTS fallback |
+| Desktop Integration | Rust |
+| Audio Cache | Disk-based storage |
+| LLM Cache | In-memory storage |
 
 ## Getting Started
 
 ### Prerequisites
 
-Before you begin, make sure you have:
+Install the following before setting up Buddy:
 
-- **Node.js** 20 or higher
-- **Python** 3.11 – 3.12 (avoid 3.13 — it breaks some TTS dependencies)
-- **Rust** toolchain (required for Tauri) — install from [rustup.rs](https://rustup.rs)
-- A free **Groq API key** — get one at [console.groq.com](https://console.groq.com)
+- [Node.js](https://nodejs.org/) — version 20 or later
+- [Python](https://www.python.org/downloads/) — version 3.11–3.12 recommended
+- [Rust](https://rustup.rs/) — required by Tauri
+- [Groq API Key](https://console.groq.com/) — for speech-to-text and LLM requests
+
+> **Note:** Python 3.13 may cause compatibility issues with some TTS dependencies.
 
 ### Backend Setup
 
+Clone the repository and navigate to the backend directory:
+
 ```bash
-# Navigate to the backend folder
-cd backend
+git clone https://github.com/ReageNkoana/CodeBuddy.git
+cd CodeBuddy/backend
+```
 
-# Create a virtual environment
+Create and activate a virtual environment:
+
+```powershell
 python -m venv venv
+.\venv\Scripts\Activate.ps1
+```
 
-# Activate it
-venv\Scripts\activate          # Windows
-# source venv/bin/activate     # macOS / Linux
+Install the dependencies:
 
-# Install dependencies
+```bash
 pip install -r requirements.txt
+```
 
-# Create your .env file (see Environment Variables below)
-copy .env.example .env         # Windows
-# cp .env.example .env         # macOS / Linux
+Create a `.env` file in the `backend/` directory and configure the required environment variables.
 
-# Run the server
+Start the backend:
+
+```bash
 uvicorn main:app --reload --port 8000
-The backend is now running at http://localhost:8000.
+```
 
-Frontend Setup
-In a new terminal:
+The API will be available at [http://localhost:8000](http://localhost:8000).
 
-bash
-# Navigate to the frontend folder
+### Frontend Setup
+
+Open a second terminal from the repository root:
+
+```bash
 cd frontend
-
-# Install dependencies
 npm install
-
-# Run the desktop app in development mode
 npm run tauri dev
-The Tauri window should open automatically. If it doesn't, check the terminal for errors.
+```
 
-Environment Variables
-Create a .env file in the backend/ folder with the following:
+The Tauri desktop application should launch automatically.
 
-Variable	Required	Description
-GROQ_API_KEY	Yes	Your Groq API key for LLM and speech-to-text
-GROQ_LLM_MODEL	No	Override the default LLM (default: llama-4-scout)
-TTS_VOICE	No	Default voice for Edge TTS (default: en-ZA-LukeNeural)
-CACHE_DIR	No	Directory for cached TTS audio (default: ./cache)
-Example .env:
+### Environment Variables
 
-env
+Create `backend/.env`:
+
+```dotenv
 GROQ_API_KEY=gsk_your_key_here
 GROQ_LLM_MODEL=llama-4-scout
 TTS_VOICE=en-ZA-LukeNeural
 CACHE_DIR=./cache
-Never commit your .env file. It's already in .gitignore.
+```
 
-API Endpoints
-Method	Endpoint	Description
-POST	/transcribe	Accepts an audio file, returns transcribed text
-POST	/chat	Accepts a message, returns a streamed LLM response
-POST	/speak	Accepts text, returns synthesized audio
-GET	/health	Returns backend status and dependency health
-All endpoints accept and return JSON (with /speak returning audio bytes).
+| Variable | Required | Description |
+|---|---|---|
+| `GROQ_API_KEY` | Yes | API key for Groq services |
+| `GROQ_LLM_MODEL` | No | Configures the language model |
+| `TTS_VOICE` | No | Default Edge TTS voice |
+| `CACHE_DIR` | No | Directory for cached audio |
 
-Project Structure
-text
+Never commit your `.env` file or expose your API key. Ensure `.env` is included in `.gitignore`.
+
+## API Endpoints
+
+| Method | Endpoint | Description |
+|---|---|---|
+| `POST` | `/transcribe` | Transcribes uploaded audio |
+| `POST` | `/chat` | Streams an AI-generated response |
+| `POST` | `/speak` | Generates speech audio from text |
+| `GET` | `/health` | Returns backend health information |
+
+The `/speak` endpoint returns audio data. Request formats and response types vary by endpoint.
+
+## Project Structure
+
+```text
 CodeBuddy/
 ├── backend/
-│   ├── main.py                 # FastAPI entry point
-│   ├── routers/                # Endpoint definitions
+│   ├── main.py
+│   ├── config.py
+│   ├── requirements.txt
+│   ├── routers/
 │   │   ├── transcribe.py
 │   │   ├── chat.py
 │   │   └── speak.py
-│   ├── services/               # Business logic
-│   │   ├── llm.py              # Groq LLM integration
-│   │   ├── stt.py              # Groq Whisper integration
-│   │   └── tts.py              # Edge TTS + gTTS fallback
-│   ├── config.py               # Environment loading
-│   ├── cache/                  # Cached TTS audio
-│   └── requirements.txt
+│   ├── services/
+│   │   ├── llm.py
+│   │   ├── stt.py
+│   │   └── tts.py
+│   └── cache/
 │
 ├── frontend/
 │   ├── src/
-│   │   ├── components/         # React components
+│   │   ├── components/
 │   │   │   ├── VoicePanel.tsx
 │   │   │   ├── ChatPanel.tsx
 │   │   │   └── WaveVisual.tsx
-│   │   ├── services/           # API and audio services
-│   │   ├── contexts/           # React contexts
-│   │   ├── types/              # TypeScript interfaces
+│   │   ├── services/
+│   │   ├── contexts/
+│   │   ├── types/
 │   │   └── App.tsx
-│   ├── src-tauri/              # Tauri config and Rust code
+│   ├── src-tauri/
 │   ├── package.json
 │   └── vite.config.ts
 │
 ├── .gitignore
 ├── LICENSE
 └── README.md
-Features in Detail
-Wake Word Activation
-Buddy stays in a low-power listening state until it hears the word "Buddy". Once activated, it listens freely for 30 seconds before returning to sleep. This prevents accidental transcriptions and reduces unnecessary API calls.
+```
 
-Barge-In Interruption
-You can interrupt Buddy mid-sentence by simply speaking. The audio playback stops immediately, and the backend cancels the current stream. Trigger words like "wait", "stop", or "hold on" also halt Buddy's response.
+## Implementation Details
 
-Fragment Staging
-When you take a breath mid-sentence, the speech-to-text engine sometimes returns two separate fragments. Buddy's staging buffer holds these fragments briefly and merges them into a single message, preventing broken-up replies.
+### Wake Word Activation
 
-Caching Strategy
-Type	Storage	Benefit
-TTS audio	Disk (cache/)	Repeated phrases play instantly
-LLM replies	In-memory	Common greetings like "hi" and "thanks" answered without an API call
-Markdown Stripping
-The LLM returns formatted text with markdown syntax (e.g., **bold**, # headers). Before sending text to the TTS engine, Buddy strips the markdown so it never reads "asterisk asterisk" aloud.
+Buddy supports wake-word activation using "Buddy". Once activated, it listens for speech for up to 30 seconds before returning to its idle listening state.
 
-Known Limitations
-Buddy is a Phase 1 project — the voice pipeline works reliably, but there are acknowledged rough edges:
+### Barge-In Interruption
 
-Limitation	Impact	Planned Fix
-Edge TTS occasional 403s	Falls back to gTTS (robotic voice)	Local TTS (Kokoro or Piper)
-Whisper accent accuracy	~25% word error rate on South African English	Switch to Deepgram Nova-3
-Whisper hallucinations	Occasional "Thank you" on silence	Blocklist + peak RMS filter (partial fix)
-Groq rate limits	8K tokens per minute on GPT-OSS 120B	Use Llama 4 Scout (30K TPM)
-No persistent memory	Conversations don't survive restart	Add SQLite storage
-Single-turn context	Very long chats hit token limits	Summarise older messages
-Roadmap
+Speech playback can be interrupted by speaking or using commands such as "stop", "wait", or "hold on". The application coordinates audio playback interruption with the active response stream.
 
-Phase 1 — Voice Conversation (Complete)
-☑ Real-time voice input with wake-word activation
-☑ Streamed AI responses from Groq LLM
-☑ Text-to-speech with 40+ voices
-☑ Interruption and barge-in handling
-☑ TTS and LLM response caching
+### Fragment Staging
 
+A staging buffer temporarily holds speech transcription fragments and combines them when appropriate, reducing the likelihood of incomplete sentences being submitted to the LLM.
 
-Phase 2 — Persistent Memory
-□ SQLite storage for conversations
-□ Cross-session context
-□ Learned user preferences
-□ "What did we talk about yesterday?"
+### Caching
 
+- **TTS caching:** Stores generated audio on disk for reuse.
+- **LLM caching:** Stores eligible common responses in memory to avoid unnecessary API calls.
 
-Phase 3 — Tool Use
-□ File system access (open my project folder)
-□ Code execution (run the tests)
-□ Screen awareness (screenshot → vision model)
-□ Web search integration
+### Markdown Stripping
 
+Markdown formatting is removed from AI-generated responses before text is passed to the TTS engine, preventing formatting symbols from being spoken aloud.
 
-Phase 4 — Agent Mode
-□ Multi-step task execution
-□ Local model support for privacy
-□ Multi-device companion app
-□ Plugin ecosystem for custom tools
+## Known Limitations
 
+| Limitation | Impact | Potential Improvement |
+|---|---|---|
+| Edge TTS errors | Occasional HTTP 403 errors can trigger the gTTS fallback. | Evaluate local TTS engines such as Kokoro or Piper. |
+| Accent recognition | Whisper can struggle with South African English. | Evaluate alternative speech recognition services. |
+| Transcription hallucinations | Silence can occasionally produce incorrect text. | Improve silence detection and audio filtering. |
+| API rate limits | Requests may be throttled depending on model limits. | Evaluate alternative models and monitor usage. |
+| No persistent memory | Conversations do not survive application restarts. | Add SQLite storage. |
+| Long conversations | Context limits can affect extended conversations. | Summarize older messages and preserve relevant context. |
 
-Why I Built This
-I wanted to understand how voice-driven AI assistants actually work — not just use one. Buddy taught me real-time audio streaming, interruption handling, streamed LLM responses, and how to wire a Python backend to a modern desktop frontend.
+## Roadmap
 
-It's a foundation I plan to keep building on.
+### Phase 1 — Voice Conversations
 
-License
-This project is licensed under the MIT License — see the LICENSE file for details.
+- [x] Voice input and wake-word activation
+- [x] Streaming AI responses
+- [x] Text-to-speech with selectable voices
+- [x] Interruption handling
+- [x] TTS and LLM response caching
 
-Author
-Reage Nkoana
+### Phase 2 — Persistent Memory
 
-GitHub: @ReageNkoana
+- [ ] SQLite conversation storage
+- [ ] Cross-session context
+- [ ] User preference retention
+- [ ] Historical conversation queries
 
-Portfolio: reagenkoana.github.io/my-cv-portfolio
+### Phase 3 — Tool Use
+
+- [ ] File system access
+- [ ] Code execution and test running
+- [ ] Screen awareness using vision models
+- [ ] Web search integration
+
+### Phase 4 — Agent Mode
+
+- [ ] Multi-step task execution
+- [ ] Local model support
+- [ ] Multi-device companion application
+- [ ] Plugin ecosystem
+
+## Why I Built This
+
+I wanted to understand how voice-driven AI assistants work rather than simply use one.
+
+Building Buddy has given me practical experience with audio processing, speech recognition, text-to-speech, streaming LLM responses, interruption handling, and integrating a Python backend with a modern desktop application.
+
+Buddy is a foundation I plan to continue building on.
+
+## Author
+
+**Reage Nkoana**
+
+- GitHub: [@ReageNkoana](https://github.com/ReageNkoana)
+- Portfolio: [reagenkoana.github.io/my-cv-portfolio](https://reagenkoana.github.io/my-cv-portfolio)
+
+## License
+
+This project is licensed under the MIT License. See [LICENSE](LICENSE) for details.
