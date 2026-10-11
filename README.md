@@ -1,6 +1,7 @@
 # Buddy — AI-Powered Desktop Voice Assistant
 
-A desktop AI assistant you can talk to. Buddy listens to your voice, streams back intelligent responses, and speaks them aloud — running locally on your Windows machine using free cloud APIs.
+A desktop AI assistant you can talk to. Buddy listens to your voice, streams back intelligent responses, and speaks them aloud — running locally on your Windows machine using free cloud APIs. It is being developed to eventually assist with coding, understand what is on your screen, and help with tasks visible on your laptop.
+
 
 > **Status:** Phase 1 complete — active development
 
